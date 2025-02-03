@@ -19,7 +19,7 @@ This project provides a Python interface for controlling the KR-CU16 locker syst
 
 ### KR-CU16 Layout / KR-CU16 구성:
 
-<img src="https://github.com/user-attachments/assets/28e13971-3c91-4771-afcd-e1f1441fc986" width="300"> 
+<img src="https://github.com/user-attachments/assets/28e13971-3c91-4771-afcd-e1f1441fc986" width="500"> 
 
 - Left side: Lockers 1-8 with LED indicators (Optional)
 - 왼쪽: LED 표시등이 있는 1-8번 사물함 (선택사항)
@@ -32,7 +32,7 @@ This project provides a Python interface for controlling the KR-CU16 locker syst
 
 ### RS485-USB Connection / RS485-USB 연결
 
-<img src="KakaoTalk_20250203_165724242.jpg" width="400" alt="RS485-USB Converter"/>
+<img src="https://github.com/user-attachments/assets/1ca3ac5a-b80a-426a-9c60-9d32cff5ccec" width="500">
 
 For USB connectivity, you'll need to directly wire and connect using an RS485 to USB converter. I used the converter shown in the picture.   
 USB 연결을 위해서는 RS485-USB 컨버터를 이용하여 직접 배선 연결이 필요합니다. 사진에 보이는 컨버터를 사용했습니다.
