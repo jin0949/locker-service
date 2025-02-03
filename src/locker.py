@@ -13,13 +13,12 @@ class Locker:
     MIN_LOCKER = 1    # 최소 사물함 번호 / Minimum locker number
     RESPONSE_LENGTH = 9  # 응답 패킷 길이 / Response packet length
 
-    def __init__(self, port: str, verbose: bool = False):
+    def __init__(self, port: str):
         """
         사물함 제어 초기화
         Initialize locker control
         """
         self.logger = logging.getLogger('locker_system')
-        self.verbose = verbose
 
         try:
             self.ser = serial.Serial(
