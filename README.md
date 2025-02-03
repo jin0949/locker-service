@@ -1,4 +1,4 @@
-# KR-CU16 Locker Control System
+# KR-CU16(KERONG) Locker Control System
 # KR-CU16 사물함 제어 시스템
 
 GitHub Repository: https://github.com/jin0949/KR-CU16_locker
