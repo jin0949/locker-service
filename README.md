@@ -19,22 +19,23 @@ This project provides a Python interface for controlling the KR-CU16 locker syst
 
 ### KR-CU16 Layout / KR-CU16 구성:
 
-- Left side: Lockers 1-8 with LED indicators
-- 왼쪽: LED 표시등이 있는 1-8번 사물함
-- Right side: Lockers 9-16 with LED indicators
-- 오른쪽: LED 표시등이 있는 9-16번 사물함
-- Power input: 2-pin connector for 12V 2.5A
-- 전원 입력: 12V 2.5A용 2핀 커넥터
+<img src="KakaoTalk_20250203_155519486.jpg" width="600" alt="KR-CU16 Layout"/>
+
+- Left side: Lockers 1-8 with LED indicators (Optional)
+- 왼쪽: LED 표시등이 있는 1-8번 사물함 (선택사항)
+- Right side: Lockers 9-16 with LED indicators (Optional)
+- 오른쪽: LED 표시등이 있는 9-16번 사물함 (선택사항)
+- Power input: 2-pin connector for 12V 2.5A (Sky adapter)
+- 전원 입력: 12V 2.5A용 2핀 커넥터 (Sky 어댑터)
 - Serial port: USB connection via RS485 converter
 - 시리얼 포트: RS485 컨버터를 통한 USB 연결
-  
-![KakaoTalk_20250203_155519486](https://github.com/user-attachments/assets/50f9f633-dad8-4a32-bb95-836deb9a8d79)
 
 ### RS485-USB Connection / RS485-USB 연결
+
+<img src="KakaoTalk_20250203_165724242.jpg" width="400" alt="RS485-USB Converter"/>
+
 For USB connectivity, you'll need to directly wire and connect using an RS485 to USB converter. I used the converter shown in the picture.
 USB 연결을 위해서는 RS485-USB 컨버터를 이용하여 직접 배선 연결이 필요합니다. 사진에 보이는 컨버터를 사용했습니다.
-
-![KakaoTalk_20250203_165724242](https://github.com/user-attachments/assets/0d8d3c40-b4a6-4d66-86ed-4f70b4fc4e57)
 
 ## Software Installation / 소프트웨어 설치
 
@@ -54,7 +55,8 @@ from src.logger_config import setup_logger
 logger = setup_logger()
 
 # Connect to locker system / 사물함 시스템 연결
-locker = Locker('COM6')
+# Windows: 'COM6', Linux/macOS: '/dev/ttyUSB0'
+locker = Locker('COM6')  
 
 # Check locker status / 사물함 상태 확인
 status = locker.is_locked(1)
@@ -83,8 +85,12 @@ success = locker.open_all()
 - 시스템은 RS485 프로토콜을 사용하여 통신합니다
 - LED indicators show locker status (optional feature)
 - LED 표시등으로 사물함 상태 표시 (선택 기능)
-- Compatible with Windows COM ports
-- Windows COM 포트와 호환됩니다
+- Compatible with various operating systems (Windows, Linux, macOS)
+  - Windows: Use 'COMx' format (e.g., 'COM6')
+  - Linux/macOS: Use '/dev/ttyUSBx' format (e.g., '/dev/ttyUSB0')
+- 다양한 운영체제와 호환됩니다 (Windows, Linux, macOS)
+  - Windows: 'COMx' 형식 사용 (예: 'COM6')
+  - Linux/macOS: '/dev/ttyUSBx' 형식 사용 (예: '/dev/ttyUSB0')
 
 ## License / 라이선스
 
@@ -96,5 +102,8 @@ MIT 라이선스
 Contributions are welcome! Please feel free to submit a Pull Request.
 기여는 언제나 환영합니다! Pull Request를 자유롭게 제출해주세요.
 
+Citations:
+[1] https://pplx-res.cloudinary.com/image/upload/v1738569882/user_uploads/ugzWxtxRFAjyucZ/KakaoTalk_20250203_155519486.jpg
+[2] https://pplx-res.cloudinary.com/image/upload/v1738569882/user_uploads/RdzvxLKZSMlQXla/KakaoTalk_20250203_165724242.jpg
+
 ---
-Perplexity로부터의 답변: pplx.ai/share
