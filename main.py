@@ -1,31 +1,33 @@
-from src.locker import Locker
+from src.locker import Locker, LockerException
+from src.logger_config import setup_logger
 
 
 def main():
+    # 로거 설정
+    logger = setup_logger()
+    locker = None
+    port = 'COM6'
+
     try:
-        # Windows의 경우 'COM1(맞는포트 장치 드라이버에서 찾아쓰세요.', Linux/Mac의 경우 '/dev/ttyUSB0' 등
-        locker = Locker(port='COM1', verbose=True)  # 디버그 메시지 출력을 위해 verbose=True
+        locker = Locker(port, verbose=True)
 
-        # 2. 특정 사물함 상태 확인
-        locker_number = 1
-        is_locked = locker.is_locked(locker_number)
-        print(f"사물함 {locker_number}번 상태: {'잠김' if is_locked else '열림'}")
+        # 상태 확인
+        status = locker.is_locked(1)
+        logger.info(f"1번 사물함 상태: {'잠김' if status else '열림'}")
 
-        # 3. 사물함 열기
-        if is_locked:
-            success = locker.open(locker_number)
-            if success:
-                print(f"사물함 {locker_number}번이 성공적으로 열렸습니다.")
-            else:
-                print(f"사물함 {locker_number}번 열기 실패")
+        # 열기 시도
+        if status:
+            success = locker.open(1)
+            logger.info(f"1번 사물함 열기: {'성공' if success else '실패'}")
 
-    except ValueError as e:
-        print(f"에러 발생: {e}")
-    except serial.SerialException as e:
-        print(f"시리얼 통신 에러: {e}")
+    except LockerException as e:
+        logger.error(f"사물함 오류: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"예상치 못한 오류: {str(e)}")
+        raise
     finally:
-        # 4. 연결 종료
-        if 'locker' in locals():
+        if locker:
             locker.close()
 
 
