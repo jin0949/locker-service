@@ -19,7 +19,7 @@ This project provides a Python interface for controlling the KR-CU16 locker syst
 
 ### KR-CU16 Layout / KR-CU16 구성:
 
-![KakaoTalk_20250203_155519486](https://github.com/user-attachments/assets/28e13971-3c91-4771-afcd-e1f1441fc986 |width=300)
+<img src="https://github.com/user-attachments/assets/28e13971-3c91-4771-afcd-e1f1441fc986" width="300"> 
 
 - Left side: Lockers 1-8 with LED indicators (Optional)
 - 왼쪽: LED 표시등이 있는 1-8번 사물함 (선택사항)
