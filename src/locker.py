@@ -1,138 +1,149 @@
-import inspect
 import time
 import serial
-
-## KR-CU16 사물함 중앙장치 제어 코드
+import logging
+from .constants import LockerCommand, PacketByte, ResponseIndex
+from .exceptions import LockerException
 
 class Locker:
-    def __init__(
-            self,
-            port: str,
-            verbose: bool=False
-    ):
-        self.ser = serial.Serial(
-            port=port,
-            baudrate=19200,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=1
-        )
-        self.debug = verbose
+    """
+    사물함 제어 클래스
+    Locker control class
+    """
+    MAX_LOCKER = 16   # 최대 사물함 번호 / Maximum locker number
+    MIN_LOCKER = 1    # 최소 사물함 번호 / Minimum locker number
+    RESPONSE_LENGTH = 9  # 응답 패킷 길이 / Response packet length
+
+    def __init__(self, port: str, verbose: bool = False):
+        """
+        사물함 제어 초기화
+        Initialize locker control
+        """
+        self.logger = logging.getLogger('locker_system')
+        self.verbose = verbose
+
+        try:
+            self.ser = serial.Serial(
+                port=port,
+                baudrate=19200,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS,
+                timeout=1
+            )
+            self.logger.info(f"포트 {port} 연결 성공 / Port {port} connection successful")
+        except serial.SerialException as e:
+            self.logger.error(f"포트 {port} 연결 실패 / Port {port} connection failed: {str(e)}")
+            raise LockerException(f"포트 연결 실패 / Port connection failed: {str(e)}")
 
     def close(self):
-        """시리얼 포트 연결 종료"""
-        self.ser.close()
+        """
+        시리얼 포트 연결 종료
+        Close serial port connection
+        """
+        if hasattr(self, 'ser') and self.ser.is_open:
+            self.ser.close()
+            self.logger.info("연결 종료 / Connection closed")
 
-    def verbose(self, msg):
-        """디버그 메시지 출력"""
-        if self.debug:
-            method = inspect.currentframe().f_back.f_code.co_name
-            print(f"\033[96m{method}> \033[92m{msg}\033[0m")
+    def is_locked(self, locker_number: int) -> bool:
+        """
+        사물함 잠금 상태 확인
+        Check if locker is locked
+        """
+        if not self.MIN_LOCKER <= locker_number <= self.MAX_LOCKER:
+            raise LockerException(
+                f"잘못된 사물함 번호 / Invalid locker number: {locker_number} "
+                f"({self.MIN_LOCKER}-{self.MAX_LOCKER} 사이 값 필요 / value must be between {self.MIN_LOCKER}-{self.MAX_LOCKER})"
+            )
 
-    @staticmethod
-    def calc_checksum(data):
-        """체크섬 계산"""
-        return sum(data) & 0xFF
+        try:
+            cmd = bytearray([
+                PacketByte.STX.value,
+                PacketByte.DEFAULT_ADDR.value,
+                LockerCommand.STATUS.value,
+                PacketByte.ETX.value,
+                0x35  # Checksum for status command
+            ])
+            self.ser.write(cmd)
 
-    def _create_unlock_packet(self, lock_num):
-        """잠금해제 패킷 생성"""
-        STX = 0x02  # 시작 바이트
-        addr = lock_num - 1  # 락커 주소
-        CMD = 0x31  # 잠금해제 명령어
-        ETX = 0x03  # 종료 바이트
+            response = self.ser.read(self.RESPONSE_LENGTH)
+            if len(response) != self.RESPONSE_LENGTH:
+                raise LockerException("상태 확인 실패: 잘못된 응답 길이 / Status check failed: Invalid response length")
 
-        arr = [STX, addr, CMD, ETX]
-        packet = bytearray(arr)
-        checksum = self.calc_checksum(arr)
-        packet.append(checksum)
+            if response[ResponseIndex.STX.value] != PacketByte.STX.value:
+                raise LockerException("상태 확인 실패: 잘못된 시작 바이트 / Status check failed: Invalid start byte")
 
-        self.verbose(
-            f"{packet.hex()} ({len(packet)} bytes)\n"
-            f"{arr}\n"
-            f"cks: ({checksum})\n"
-        )
-        return packet
+            status_idx = ResponseIndex.STATUS_1_8.value if locker_number <= 8 else ResponseIndex.STATUS_9_16.value
+            bit_position = (locker_number - 1) % 8
+            is_locked = bool((response[status_idx] >> bit_position) & 0x01)
 
-    def _exec_unlock(self, n):
-        """락커 잠금해제 실행"""
-        if n < 1 or n > 16:
-            err = f"Lock number must be between 1 and 16. Provided value: {n}"
-            self.verbose(err)
-            raise ValueError(err)
+            if self.verbose:
+                self.logger.debug(
+                    f"사물함 {locker_number} 상태 / Locker {locker_number} status: "
+                    f"{'잠김 / Locked' if is_locked else '열림 / Unlocked'}"
+                )
+            return is_locked
 
-        if not self.is_locked(n):
-            self.verbose(f"Lock {n} is already unlocked.")
-            return False
+        except serial.SerialException as e:
+            raise LockerException(f"통신 오류 / Communication error: {str(e)}")
 
-        cmd = self._create_unlock_packet(n)
-        self.verbose(f"Sent Hex: {cmd.hex()}")
-        self.ser.write(cmd)
+    def open(self, locker_number: int) -> bool:
+        """
+        사물함 열기
+        Open locker
+        """
+        if not self.MIN_LOCKER <= locker_number <= self.MAX_LOCKER:
+            raise LockerException(
+                f"잘못된 사물함 번호 / Invalid locker number: {locker_number} "
+                f"({self.MIN_LOCKER}-{self.MAX_LOCKER} 사이 값 필요 / value must be between {self.MIN_LOCKER}-{self.MAX_LOCKER})"
+            )
 
-        time.sleep(0.025)
+        try:
+            if not self.is_locked(locker_number):
+                self.logger.info(f"사물함 {locker_number}번이 이미 열려있습니다 / Locker {locker_number} is already unlocked")
+                return True
 
-        if self.is_locked(n):
-            self.verbose(f"Failed to unlock lock {n}")
-            return False
+            packet = bytearray([
+                PacketByte.STX.value,
+                locker_number - 1,
+                LockerCommand.UNLOCK.value,
+                PacketByte.ETX.value
+            ])
+            packet.append(sum(packet) & 0xFF)  # Checksum
+
+            self.ser.write(packet)
+            time.sleep(0.025)
+
+            success = not self.is_locked(locker_number)
+            if success:
+                self.logger.info(f"사물함 {locker_number}번 열기 성공 / Successfully opened locker {locker_number}")
+            else:
+                self.logger.error(f"사물함 {locker_number}번 열기 실패 / Failed to open locker {locker_number}")
+            return success
+
+        except serial.SerialException as e:
+            raise LockerException(f"통신 오류 / Communication error: {str(e)}")
+
+    def open_all(self) -> bool:
+        """
+        모든 사물함 열기
+        Open all lockers
+        """
+        success = True
+        failed = []
+
+        for i in range(self.MIN_LOCKER, self.MAX_LOCKER + 1):
+            try:
+                if not self.open(i):
+                    success = False
+                    failed.append(i)
+            except LockerException as e:
+                self.logger.error(f"사물함 {i}번 열기 실패 / Failed to open locker {i}: {str(e)}")
+                success = False
+                failed.append(i)
+
+        if failed:
+            self.logger.warning(f"열기 실패한 사물함 / Failed to open lockers: {failed}")
         else:
-            self.verbose(f"Lock {n} unlocked successfully.")
-            return True
+            self.logger.info("모든 사물함 열기 성공 / Successfully opened all lockers")
 
-    def open(self, n: int):
-        """락커 열기"""
-        self.verbose(f"Opening lock {n}...")
-        if n <= 0:
-            raise ValueError("Lock number must be greater than 0")
-        return self._exec_unlock(n)
-
-    def is_locked(self, lock_number):
-        """락커 잠금 상태 확인"""
-        if lock_number < 1 or lock_number > 16:
-            raise ValueError("Invalid lock number. Must be between 1 and 16.")
-
-        cu16_address_hex = 0x00
-        self.verbose(f"Checking lock {lock_number}... [CU16 Address: {hex(cu16_address_hex)}]")
-
-        cmd = bytearray([0x02, cu16_address_hex, 0x30, 0x03, 0x35])
-        self.ser.write(cmd)
-
-        res = self.ser.read(9)
-        time.sleep(0.025)
-
-        self.verbose(f"Received response: {res.hex()}")
-        self.verbose(f"Response length: {len(res)}")
-
-        if len(res) == 9:
-            stx = res[0]
-            self.verbose(f"STX: {hex(stx)}")
-            if stx != 0x02:
-                raise ValueError("Invalid start byte")
-
-            addr = res[1]
-            self.verbose(f"ADDR: {hex(addr)}")
-            if addr != cu16_address_hex:
-                raise ValueError("Invalid address")
-
-            cmd_res = res[2]
-            self.verbose(f"CMD_RES: {hex(cmd_res)}")
-            if cmd_res != 0x35:
-                raise ValueError("Invalid command response")
-
-            lock_state_1_8 = res[3]
-            lock_state_9_16 = res[4]
-
-            self.verbose(f"LOCK_STATUS (1-8): {hex(lock_state_1_8)} [{bin(lock_state_1_8)[2:].zfill(8)}]")
-            self.verbose(f"LOCK_STATUS (9-16): {hex(lock_state_9_16)} [{bin(lock_state_9_16)[2:].zfill(8)}]")
-
-            lock_bit = 0
-
-            if 1 <= lock_number <= 8:
-                lock_bit = (lock_state_1_8 >> (lock_number - 1)) & 0x01
-            elif 9 <= lock_number <= 16:
-                lock_bit = (lock_state_9_16 >> (lock_number - 9)) & 0x01
-
-            self.verbose(f"Lock {lock_number} status: {'Locked' if lock_bit == 1 else 'Unlocked'}")
-            return lock_bit == 1
-        else:
-            self.verbose("Invalid response length")
-            raise ValueError(f"Invalid response length: {len(res)}")
+        return success
