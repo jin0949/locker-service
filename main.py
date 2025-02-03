@@ -9,7 +9,7 @@ def main():
     port = 'COM6'
 
     try:
-        locker = Locker(port, verbose=True)
+        locker = Locker(port)
 
         # 상태 확인
         status = locker.is_locked(1)
