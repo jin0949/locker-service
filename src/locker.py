@@ -75,11 +75,10 @@ class Locker:
             bit_position = (locker_number - 1) % 8
             is_locked = bool((response[status_idx] >> bit_position) & 0x01)
 
-            if self.verbose:
-                self.logger.debug(
-                    f"사물함 {locker_number} 상태 / Locker {locker_number} status: "
-                    f"{'잠김 / Locked' if is_locked else '열림 / Unlocked'}"
-                )
+            self.logger.debug(
+                f"사물함 {locker_number} 상태 / Locker {locker_number} status: "
+                f"{'잠김 / Locked' if is_locked else '열림 / Unlocked'}"
+            )
             return is_locked
 
         except serial.SerialException as e:
