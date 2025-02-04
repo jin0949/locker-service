@@ -57,7 +57,7 @@ def test_close_connection(locker):
 
 
 @pytest.mark.parametrize("locker_number", range(1, 17))
-def test_status_check(locker, locker_number):
+def test_status_check(locker, locker_number: int):
     """
     각 사물함의 상태 확인 테스트
     Test for checking status of each locker
