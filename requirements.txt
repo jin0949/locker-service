@@ -1,2 +1,6 @@
 pyserial==3.5
 pytest==8.3.4
+realtime==2.1.0
+python-dotenv==1.0.1
+pillow==11.1.0
+supabase==2.11.0
