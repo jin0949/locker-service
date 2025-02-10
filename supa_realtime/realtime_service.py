@@ -16,12 +16,12 @@ class RealtimeService:
     async def start_listening(self):
         self._socket = AsyncRealtimeClient(f"{self.url}/realtime/v1", self.jwt, auto_reconnect=True)
         await self._socket.connect()
-        channel = self._socket.channel("realtime:public:laundry")
+        channel = self._socket.channel("realtime:public:locker_open_requests")
 
         await channel.on_postgres_changes(
             event="INSERT",
             schema="public",
-            table="laundry",
+            table="locker_open_requests",
             callback=self._callback_wrapper
         ).subscribe()
 
