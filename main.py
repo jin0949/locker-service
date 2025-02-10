@@ -1,10 +1,10 @@
 import asyncio
 import logging
 
-from src.locker import Locker
-from src.supa_db import SupaDB
+from src.locker.locker import Locker
+from src.supa_db.supa_db import SupaDB
 from src.supa_realtime.config import DATABASE_URL, JWT
-from src.supa_realtime import RealtimeService
+from src.supa_realtime.realtime_service import RealtimeService
 
 
 class LaundryHandler:
