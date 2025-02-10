@@ -3,6 +3,7 @@ import logging
 
 from src.handler.locker_moniter_handler import LockerMonitorHandler
 from src.handler.locker_open_requests_handler import LockerOpenRequestsHandler
+from src.locker.locker import Locker
 
 
 async def main():
@@ -12,11 +13,14 @@ async def main():
     )
 
     try:
-        # Initialize handlers
-        laundry_handler = LockerOpenRequestsHandler()
-        locker_monitor = LockerMonitorHandler(laundry_handler.locker)
+        # Single Locker instance
+        port = '/dev/ttyUSB0'
+        locker = Locker(port)
 
-        # Run both handlers concurrently
+        # Initialize handlers with shared locker
+        laundry_handler = LockerOpenRequestsHandler(locker=locker)
+        locker_monitor = LockerMonitorHandler(locker=locker)
+
         await asyncio.gather(
             laundry_handler.start(),
             locker_monitor.monitor_locker_states(),
@@ -24,10 +28,8 @@ async def main():
     except Exception as e:
         logging.error(f"Main process error: {str(e)}")
     finally:
-        # Cleanup
-        if hasattr(laundry_handler, 'locker'):
-            laundry_handler.locker.close()
-
+        if locker:
+            locker.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -7,10 +7,10 @@ from src.supa_realtime.realtime_service import RealtimeService
 
 
 class LockerOpenRequestsHandler:
-    def __init__(self):
+    def __init__(self, locker: Locker):
         self.supa_api = SupaDB()
         self.service = RealtimeService(DATABASE_URL, JWT, self.handle_change)
-        self.locker = Locker("COM6")
+        self.locker = locker
 
     async def handle_change(self, payload):
         try:
