@@ -49,14 +49,14 @@ pip install -r requirements.txt
 
 ```python
 from src.locker import Locker
-from src.logger_config import setup_logger
+from src.locker.logger_config import setup_logger
 
 # Initialize logger / 로거 초기화
 logger = setup_logger()
 
 # Connect to locker system / 사물함 시스템 연결
 # Windows: 'COM6', Linux/macOS: '/dev/ttyUSB0'
-locker = Locker('COM6')  
+locker = Locker('COM6')
 
 # Check locker status / 사물함 상태 확인
 status = locker.is_locked(1)

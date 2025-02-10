@@ -1,7 +1,7 @@
 import logging
 
 from supabase import create_client
-from supa_realtime.config import DATABASE_URL, JWT
+from src.supa_realtime.config import DATABASE_URL, JWT
 
 
 class SupaDB:

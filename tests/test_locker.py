@@ -1,6 +1,6 @@
 import pytest
 from src.locker import Locker, LockerException
-from src.logger_config import setup_logger
+from src.locker.logger_config import setup_logger
 
 # 사물함 시리얼 포트 설정
 # Serial port configuration for locker
