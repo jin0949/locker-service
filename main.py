@@ -1,12 +1,15 @@
 import asyncio
 import logging
 
+from setproctitle import setproctitle
+
 from src.handler.locker_moniter_handler import LockerMonitorHandler
 from src.handler.locker_open_requests_handler import LockerOpenRequestsHandler
 from src.locker.locker import Locker
 
 
 async def main():
+    setproctitle("locker-service")
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -30,6 +33,7 @@ async def main():
     finally:
         if locker:
             locker.close()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
