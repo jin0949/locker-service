@@ -9,9 +9,11 @@ This project implements a comprehensive laundry management system that integrate
 - **Hardware Control**: KR-CU16 locker system via RS485-USB
 - **Database**: Supabase (PostgreSQL)
 - **Real-time Updates**: Supabase Realtime
+- **Background Monitoring**: Asynchronous state monitoring system
 - **하드웨어 제어**: RS485-USB를 통한 KR-CU16 사물함 시스템
 - **데이터베이스**: Supabase (PostgreSQL)
 - **실시간 업데이트**: Supabase Realtime
+- **백그라운드 모니터링**: 비동기 상태 모니터링 시스템
 
 ## Core Features / 주요 기능
 
@@ -24,8 +26,12 @@ This project implements a comprehensive laundry management system that integrate
 ### 2. Automated Locker Management / 자동화된 사물함 관리
 - Real-time locker status monitoring
 - Automatic storage allocation/deallocation
+- Memory-optimized state tracking
+- Periodic full synchronization
 - 실시간 사물함 상태 모니터링
 - 자동 저장공간 할당/해제
+- 메모리 최적화된 상태 추적
+- 주기적 전체 동기화
 
 ### 3. Payment Integration / 결제 연동
 - Payment verification for user access
@@ -35,17 +41,19 @@ This project implements a comprehensive laundry management system that integrate
 
 ## Main Process Flow / 주요 처리 흐름
 
+### Request Handler / 요청 처리
 1. Locker open request detection
 2. User role & permission verification
 3. Payment status check (for regular users)
 4. Locker control execution
 5. Storage status update
 
-1. 사물함 열기 요청 감지
-2. 사용자 역할 및 권한 확인
-3. 결제 상태 확인 (일반 사용자)
-4. 사물함 제어 실행
-5. 저장공간 상태 업데이트
+### State Monitor / 상태 모니터링
+1. Initial state synchronization
+2. Real-time state change detection
+3. Memory-based state tracking
+4. Periodic full synchronization (every 60s)
+5. Differential updates to database
 
 ## Technical Requirements / 기술 요구사항
 
@@ -54,4 +62,23 @@ This project implements a comprehensive laundry management system that integrate
 - Supabase Account
 - RS485-USB Converter
 - 12V 2.5A Power Supply
+
+## System Components / 시스템 구성요소
+
+### LaundryHandler
+- Handles real-time open requests
+- Manages user permissions
+- Controls locker operations
+- 실시간 열기 요청 처리
+- 사용자 권한 관리
+- 사물함 작동 제어
+
+### LockerMonitorHandler
+- Monitors physical locker states
+- Maintains in-memory state cache
+- Performs periodic synchronization
+- 물리적 사물함 상태 모니터링
+- 메모리 내 상태 캐시 관리
+- 주기적 동기화 수행
+
 ---
