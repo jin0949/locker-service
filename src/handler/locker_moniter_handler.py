@@ -2,14 +2,12 @@ import asyncio
 import logging
 import time
 
-from src.locker.locker import Locker
-from src.supa_db.supa_db import SupaDB
-
 
 class LockerMonitorHandler:
-    def __init__(self, locker: Locker):
+    def __init__(self, locker, supa_db, realtime_service):
         self.locker = locker
-        self.supa_api = SupaDB()
+        self.supa_db = supa_db
+        self.realtime_service = realtime_service
         self.storage_states = {}  # {storage_id: {'number': number, 'is_locked': bool}}
         self.last_full_sync = 0
         self.FULL_SYNC_INTERVAL = 60  # 1분 주기로 전체 동기화
@@ -17,7 +15,7 @@ class LockerMonitorHandler:
     async def initialize_states(self):
         """초기 상태 동기화"""
         try:
-            storages = self.supa_api.get_all_storages()
+            storages = self.supa_db.get_all_storages()
             if not storages:
                 return False
 
@@ -27,7 +25,7 @@ class LockerMonitorHandler:
                     'number': storage['number'],
                     'is_locked': current_state
                 }
-                self.supa_api.update_storage_status(storage['id'], current_state)
+                self.supa_db.update_storage_status(storage['id'], current_state)
 
             self.last_full_sync = time.time()
             return True
@@ -38,7 +36,7 @@ class LockerMonitorHandler:
     async def full_sync(self):
         """전체 상태 동기화"""
         try:
-            storages = self.supa_api.get_all_storages()
+            storages = self.supa_db.get_all_storages()
             if not storages:
                 return
 
@@ -58,7 +56,7 @@ class LockerMonitorHandler:
                         'number': storage['number'],
                         'is_locked': current_state
                     }
-                    self.supa_api.update_storage_status(storage['id'], current_state)
+                    self.supa_db.update_storage_status(storage['id'], current_state)
 
             self.last_full_sync = time.time()
         except Exception as e:
@@ -83,7 +81,7 @@ class LockerMonitorHandler:
 
                     if current_state != storage_info['is_locked']:
                         self.storage_states[storage_id]['is_locked'] = current_state
-                        self.supa_api.update_storage_status(storage_id, current_state)
+                        self.supa_db.update_storage_status(storage_id, current_state)
 
                 await asyncio.sleep(1)
             except Exception as e:

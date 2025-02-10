@@ -1,16 +1,12 @@
 import logging
 
-from src.locker.locker import Locker
-from src.supa_db.supa_db import SupaDB
-from src.supa_realtime.config import DATABASE_URL, JWT
-from src.supa_realtime.realtime_service import RealtimeService
-
 
 class LockerOpenRequestsHandler:
-    def __init__(self, locker: Locker):
-        self.supa_api = SupaDB()
-        self.service = RealtimeService(DATABASE_URL, JWT, self.handle_change)
+    def __init__(self, locker, supa_db, realtime_service):
         self.locker = locker
+        self.supa_db = supa_db
+        self.realtime_service = realtime_service
+        self.realtime_service.set_callback(self.handle_change)
 
     async def handle_change(self, payload):
         try:
@@ -23,14 +19,14 @@ class LockerOpenRequestsHandler:
             requested_by = record['requested_by']
 
             # 2. Get storage info
-            storage = self.supa_api.get_storage_info(storage_id)
+            storage = self.supa_db.get_storage_info(storage_id)
             if not storage:
                 await self.update_request_status(request_id, 'failed')
                 logging.error(f"Storage {storage_id} not found")
                 return
 
             # 3. Get user role
-            user_role = self.supa_api.get_user_role(requested_by)
+            user_role = self.supa_db.get_user_role(requested_by)
             if not user_role:
                 await self.update_request_status(request_id, 'failed')
                 logging.error(f"User role not found for {requested_by}")
@@ -52,7 +48,7 @@ class LockerOpenRequestsHandler:
                 return
 
             # 6. Check payment status
-            laundry = self.supa_api.get_laundry_info(storage['laundry_id'])
+            laundry = self.supa_db.get_laundry_info(storage['laundry_id'])
             if not laundry or not laundry['paid']:
                 await self.update_request_status(request_id, 'reject')
                 logging.info(f"Payment required for laundry {storage['laundry_id']}")
@@ -71,16 +67,7 @@ class LockerOpenRequestsHandler:
 
     async def free_storage(self, storage_id: str):
         try:
-            self.supa_api.client.table('storages') \
-                .update({
-                    'status': 'open',
-                    'allocated_to': None,
-                    'allocated_by': None,
-                    'laundry_id': None
-                }) \
-                .eq('id', storage_id) \
-                .execute()
-            logging.info(f"Storage {storage_id} freed successfully")
+            self.supa_db.free_storage(storage_id)
         except Exception as e:
             logging.error(f"Failed to free storage {storage_id}: {str(e)}")
 
@@ -93,13 +80,9 @@ class LockerOpenRequestsHandler:
 
     async def update_request_status(self, request_id: str, status: str):
         try:
-            self.supa_api.client.table('locker_open_requests') \
-                .update({'status': status}) \
-                .eq('id', request_id) \
-                .execute()
-            logging.info(f"Request {request_id} status updated to {status}")
+            self.supa_db.update_request_status(request_id, status)
         except Exception as e:
             logging.error(f"Failed to update request status: {str(e)}")
 
     async def start(self):
-        await self.service.start_listening()
+        await self.realtime_service.start_listening()
