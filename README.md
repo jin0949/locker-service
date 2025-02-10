@@ -1,109 +1,57 @@
-# KR-CU16(KERONG) Locker Control System
-# KR-CU16 사물함 제어 시스템
+# Laundry Management System with KR-CU16 Locker Control
+# 세탁물 관리 시스템 (KR-CU16 사물함 제어 포함)
 
-GitHub Repository: https://github.com/jin0949/KR-CU16_locker
+This project implements a comprehensive laundry management system that integrates the KR-CU16 locker control system with a real-time database for handling laundry service operations.
+이 프로젝트는 KR-CU16 사물함 제어 시스템과 실시간 데이터베이스를 통합하여 세탁 서비스 운영을 처리하는 종합적인 세탁물 관리 시스템을 구현합니다.
 
-This project provides a Python interface for controlling the KR-CU16 locker system.
-이 프로젝트는 KR-CU16 사물함 시스템을 제어하기 위한 파이썬 인터페이스를 제공합니다.
+## System Architecture / 시스템 구조
 
-## Hardware Requirements / 하드웨어 요구사항
+- **Hardware Control**: KR-CU16 locker system via RS485-USB
+- **Database**: Supabase (PostgreSQL)
+- **Real-time Updates**: Supabase Realtime
+- **하드웨어 제어**: RS485-USB를 통한 KR-CU16 사물함 시스템
+- **데이터베이스**: Supabase (PostgreSQL)
+- **실시간 업데이트**: Supabase Realtime
 
-- KR-CU16 locker control unit
-- KR-CU16 사물함 제어 장치
-- RS485 to USB converter
-- RS485-USB 컨버터
-- 12V 2.5A power adapter (Sky brand adapter shown in image)
-- 12V 2.5A 전원 어댑터 (이미지의 Sky 브랜드 어댑터)
+## Core Features / 주요 기능
 
-## Hardware Connection / 하드웨어 연결
+### 1. Role-based Access Control / 역할 기반 접근 제어
+- Manager/Deliver: Full access to lockers
+- Users: Access based on payment status
+- 관리자/배송원: 사물함 전체 접근 가능
+- 일반 사용자: 결제 상태에 따른 접근
 
-### KR-CU16 Layout / KR-CU16 구성:
+### 2. Automated Locker Management / 자동화된 사물함 관리
+- Real-time locker status monitoring
+- Automatic storage allocation/deallocation
+- 실시간 사물함 상태 모니터링
+- 자동 저장공간 할당/해제
 
-<img src="https://github.com/user-attachments/assets/28e13971-3c91-4771-afcd-e1f1441fc986" width="500"> 
+### 3. Payment Integration / 결제 연동
+- Payment verification for user access
+- Automated access control based on payment status
+- 사용자 접근을 위한 결제 확인
+- 결제 상태에 따른 자동 접근 제어
 
-- Left side: Lockers 1-8 with LED indicators (Optional)
-- 왼쪽: LED 표시등이 있는 1-8번 사물함 (선택사항)
-- Right side: Lockers 9-16 with LED indicators (Optional)
-- 오른쪽: LED 표시등이 있는 9-16번 사물함 (선택사항)
-- Power input: 2-pin connector for 12V 2.5A (Sky adapter)
-- 전원 입력: 12V 2.5A용 2핀 커넥터 (Sky 어댑터)
-- Serial port: USB connection via RS485 converter
-- 시리얼 포트: RS485 컨버터를 통한 USB 연결
+## Main Process Flow / 주요 처리 흐름
 
-### RS485-USB Connection / RS485-USB 연결
+1. Locker open request detection
+2. User role & permission verification
+3. Payment status check (for regular users)
+4. Locker control execution
+5. Storage status update
 
-<img src="https://github.com/user-attachments/assets/1ca3ac5a-b80a-426a-9c60-9d32cff5ccec" width="500">
+1. 사물함 열기 요청 감지
+2. 사용자 역할 및 권한 확인
+3. 결제 상태 확인 (일반 사용자)
+4. 사물함 제어 실행
+5. 저장공간 상태 업데이트
 
-For USB connectivity, you'll need to directly wire and connect using an RS485 to USB converter. I used the converter shown in the picture.   
-USB 연결을 위해서는 RS485-USB 컨버터를 이용하여 직접 배선 연결이 필요합니다. 사진에 보이는 컨버터를 사용했습니다.
+## Technical Requirements / 기술 요구사항
 
-## Software Installation / 소프트웨어 설치
-
-```bash
-git clone https://github.com/jin0949/KR-CU16_locker.git
-cd KR-CU16_locker
-pip install -r requirements.txt
-```
-
-## Usage / 사용 방법
-
-```python
-from src.locker import Locker
-from src.locker.logger_config import setup_logger
-
-# Initialize logger / 로거 초기화
-logger = setup_logger()
-
-# Connect to locker system / 사물함 시스템 연결
-# Windows: 'COM6', Linux/macOS: '/dev/ttyUSB0'
-locker = Locker('COM6')
-
-# Check locker status / 사물함 상태 확인
-status = locker.is_locked(1)
-
-# Open specific locker / 특정 사물함 열기
-success = locker.open(1)
-
-# Open all lockers / 전체 사물함 열기
-success = locker.open_all()
-```
-
-## Features / 기능
-
-- Individual locker status checking
-- 개별 사물함 상태 확인
-- Single locker control
-- 단일 사물함 제어
-- All locker control
-- 전체 사물함 제어
-- Error handling and logging
-- 에러 처리 및 로깅
-
-## Notes / 참고사항
-
-- The system uses RS485 protocol for communication
-- 시스템은 RS485 프로토콜을 사용하여 통신합니다
-- LED indicators show locker status (optional feature)
-- LED 표시등으로 사물함 상태 표시 (선택 기능)
-- Compatible with various operating systems (Windows, Linux, macOS)
-  - Windows: Use 'COMx' format (e.g., 'COM6')
-  - Linux/macOS: Use '/dev/ttyUSBx' format (e.g., '/dev/ttyUSB0')
-- 다양한 운영체제와 호환됩니다 (Windows, Linux, macOS)
-  - Windows: 'COMx' 형식 사용 (예: 'COM6')
-  - Linux/macOS: '/dev/ttyUSBx' 형식 사용 (예: '/dev/ttyUSB0')
-
-## License / 라이선스
-
-MIT License
-MIT 라이선스
-
-## Contributing / 기여하기
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-기여는 언제나 환영합니다! Pull Request를 자유롭게 제출해주세요.
-
-Citations:
-[1] https://pplx-res.cloudinary.com/image/upload/v1738569882/user_uploads/ugzWxtxRFAjyucZ/KakaoTalk_20250203_155519486.jpg
-[2] https://pplx-res.cloudinary.com/image/upload/v1738569882/user_uploads/RdzvxLKZSMlQXla/KakaoTalk_20250203_165724242.jpg
-
+- Python 3.7+
+- KR-CU16 Locker System
+- Supabase Account
+- RS485-USB Converter
+- 12V 2.5A Power Supply
 ---
