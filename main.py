@@ -39,8 +39,11 @@ class LaundryHandler:
 
             # 4. Handle manager/deliver case
             if user_role in ['deliver', 'manager']:
-                success = await self.open_locker(storage['number'])
-                await self.update_request_status(request_id, 'success' if success else 'failed')
+                if await self.open_locker(storage['number']):
+                    await self.update_request_status(request_id, 'success')
+                    await self.free_storage(storage_id)
+                    return
+                await self.update_request_status(request_id, 'failed')
                 return
 
             # 5. Handle regular user case
@@ -57,12 +60,30 @@ class LaundryHandler:
                 return
 
             # 7. Open locker for paid user
-            success = await self.open_locker(storage['number'])
-            await self.update_request_status(request_id, 'success' if success else 'failed')
+            if await self.open_locker(storage['number']):
+                await self.update_request_status(request_id, 'success')
+                await self.free_storage(storage_id)
+                return
+            await self.update_request_status(request_id, 'failed')
 
         except Exception as e:
             logging.error(f"Error in handle_change: {str(e)}")
             await self.update_request_status(request_id, 'failed')
+
+    async def free_storage(self, storage_id: str):
+        try:
+            self.supa_api.client.table('storages') \
+                .update({
+                    'status': 'open',
+                    'allocated_to': None,
+                    'allocated_by': None,
+                    'laundry_id': None
+                }) \
+                .eq('id', storage_id) \
+                .execute()
+            logging.info(f"Storage {storage_id} freed successfully")
+        except Exception as e:
+            logging.error(f"Failed to free storage {storage_id}: {str(e)}")
 
     async def open_locker(self, number: int) -> bool:
         try:
