@@ -1,71 +1,48 @@
 import asyncio
-import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 from setproctitle import setproctitle
+from dotenv import load_dotenv
 
 from src.handler.locker_moniter_handler import LockerMonitorHandler
 from src.handler.locker_open_requests_handler import LockerOpenRequestsHandler
 from src.locker.locker import Locker
 from src.supa_db.supa_db import SupaDB
 from src.supa_realtime.realtime_service import RealtimeService
-from src.supa_realtime.config import DATABASE_URL, JWT
+from src.utils.logger import setup_logger
 
+# User configurations
+SERIAL_PORT = '/dev/ttyUSB0'
+SERVICE_NAME = "locker-service"
 
-def setup_logger():
-    log_dir = 'logs'
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-
-    log_file = os.path.join(log_dir, 'locker-service.log')
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    file_handler = TimedRotatingFileHandler(
-        filename=log_file,
-        when='midnight',
-        interval=1,
-        backupCount=7,
-        encoding='utf-8'
-    )
-    file_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
-
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
+# Load environment variables
+load_dotenv()
+DATABASE_URL = os.getenv('DATABASE_URL')
+JWT = os.getenv('JWT')
 
 
 async def main():
-    setproctitle("locker-service")
-    setup_logger()
+    setproctitle(SERVICE_NAME)
+    logger = setup_logger()
 
     try:
         # Initialize base components
-        port = '/dev/ttyUSB0'
-        locker = Locker(port)
+        locker = Locker(SERIAL_PORT)
         supa_db = SupaDB(DATABASE_URL, JWT)
 
         # Initialize realtime services
-        open_requests_service = RealtimeService(DATABASE_URL, JWT)
-        monitor_service = RealtimeService(DATABASE_URL, JWT)
+        realtime_service = RealtimeService(DATABASE_URL, JWT)
 
         # Initialize handlers with dependencies
         open_requests_handler = LockerOpenRequestsHandler(
             locker=locker,
             supa_db=supa_db,
-            realtime_service=open_requests_service
+            realtime_service=realtime_service
         )
 
         monitor_handler = LockerMonitorHandler(
             locker=locker,
             supa_db=supa_db,
-            realtime_service=monitor_service
+            realtime_service=realtime_service
         )
 
         await asyncio.gather(
@@ -73,7 +50,7 @@ async def main():
             monitor_handler.monitor_locker_states(),
         )
     except Exception as e:
-        logging.error(f"Main process error: {str(e)}")
+        logger.error(f"CRITICAL: Main process error: {str(e)}")
     finally:
         if locker:
             locker.close()
