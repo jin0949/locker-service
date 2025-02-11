@@ -1,6 +1,7 @@
 import asyncio
-from realtime import AsyncRealtimeClient
 import logging
+
+from realtime import AsyncRealtimeClient
 from typing import Callable
 
 
