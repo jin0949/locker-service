@@ -65,7 +65,7 @@ class RealtimeService:
 
     async def _monitor_connection(self):
         while True:
-            if not self._socket or not self._socket.is_connected():
+            if not self._socket or not self._socket.is_connected:
                 logging.warning("Connection lost or socket not initialized")
                 await self.reconnect()
             await asyncio.sleep(5)
