@@ -1,84 +1,119 @@
-# Laundry Management System with KR-CU16 Locker Control
-# 세탁물 관리 시스템 (KR-CU16 사물함 제어 포함)
+# Locker Service
+물품 보관함 서비스
 
-This project implements a comprehensive laundry management system that integrates the KR-CU16 locker control system with a real-time database for handling laundry service operations.
-이 프로젝트는 KR-CU16 사물함 제어 시스템과 실시간 데이터베이스를 통합하여 세탁 서비스 운영을 처리하는 종합적인 세탁물 관리 시스템을 구현합니다.
+## Overview
+시스템 개요
 
-## System Architecture / 시스템 구조
+This service controls and monitors a smart locker system with real-time communication capabilities.
+스마트 물품 보관함 시스템을 실시간으로 제어하고 모니터링하는 서비스입니다.
 
-- **Hardware Control**: KR-CU16 locker system via RS485-USB
-- **Database**: Supabase (PostgreSQL)
-- **Real-time Updates**: Supabase Realtime
-- **Background Monitoring**: Asynchronous state monitoring system
-- **하드웨어 제어**: RS485-USB를 통한 KR-CU16 사물함 시스템
-- **데이터베이스**: Supabase (PostgreSQL)
-- **실시간 업데이트**: Supabase Realtime
-- **백그라운드 모니터링**: 비동기 상태 모니터링 시스템
+## Key Features
+주요 기능
 
-## Core Features / 주요 기능
-
-### 1. Role-based Access Control / 역할 기반 접근 제어
-- Manager/Deliver: Full access to lockers
-- Users: Access based on payment status
-- 관리자/배송원: 사물함 전체 접근 가능
-- 일반 사용자: 결제 상태에 따른 접근
-
-### 2. Automated Locker Management / 자동화된 사물함 관리
 - Real-time locker status monitoring
-- Automatic storage allocation/deallocation
-- Memory-optimized state tracking
-- Periodic full synchronization
-- 실시간 사물함 상태 모니터링
-- 자동 저장공간 할당/해제
-- 메모리 최적화된 상태 추적
-- 주기적 전체 동기화
+- 실시간 보관함 상태 모니터링
 
-### 3. Payment Integration / 결제 연동
-- Payment verification for user access
-- Automated access control based on payment status
-- 사용자 접근을 위한 결제 확인
-- 결제 상태에 따른 자동 접근 제어
+- Processing instant open requests
+- 즉각적인 열림 요청 처리
 
-## Main Process Flow / 주요 처리 흐름
+- Supabase database integration
+- Supabase 데이터베이스 연동
 
-### Request Handler / 요청 처리
-1. Locker open request detection
-2. User role & permission verification
-3. Payment status check (for regular users)
-4. Locker control execution
-5. Storage status update
+- Real-time event handling
+- 실시간 이벤트 처리
 
-### State Monitor / 상태 모니터링
-1. Initial state synchronization
-2. Real-time state change detection
-3. Memory-based state tracking
-4. Periodic full synchronization (every 60s)
-5. Differential updates to database
+## Requirements
+필수 요구사항
 
-## Technical Requirements / 기술 요구사항
+- Python 3.8 or higher
+- Python 3.8 이상
 
-- Python 3.7+
-- KR-CU16 Locker System
-- Supabase Account
-- RS485-USB Converter
-- 12V 2.5A Power Supply
+- Serial-compatible locker hardware
+- 시리얼 통신 가능한 보관함 하드웨어
 
-## System Components / 시스템 구성요소
+- Supabase account and project
+- Supabase 계정 및 프로젝트
 
-### LaundryHandler
-- Handles real-time open requests
-- Manages user permissions
-- Controls locker operations
-- 실시간 열기 요청 처리
-- 사용자 권한 관리
-- 사물함 작동 제어
+## Setup
+설정 방법
 
-### LockerMonitorHandler
-- Monitors physical locker states
-- Maintains in-memory state cache
-- Performs periodic synchronization
-- 물리적 사물함 상태 모니터링
-- 메모리 내 상태 캐시 관리
-- 주기적 동기화 수행
+1. Create .env file:
+1. .env 파일 생성:
+```
+DATABASE_URL=your_supabase_url
+JWT=your_supabase_jwt
+```
+
+2. Install required packages:
+2. 필요한 패키지 설치:
+```bash
+pip install -r requirements.txt
+```
+
+## Running the Service
+서비스 실행
+
+Basic execution:
+기본 실행:
+```bash
+python main.py
+```
+
+Run with options:
+옵션 지정 실행:
+```bash
+python main.py --port /dev/ttyUSB0 --log-level INFO --log-dir logs
+```
+
+## Command Options
+실행 옵션
+
+- `--port`: Serial port designation (default: /dev/ttyUSB0)
+- `--port`: 시리얼 포트 지정 (기본값: /dev/ttyUSB0)
+
+- `--log-level`: Set logging level (DEBUG/INFO/WARNING/ERROR/CRITICAL)
+- `--log-level`: 로깅 레벨 설정 (DEBUG/INFO/WARNING/ERROR/CRITICAL)
+
+- `--log-dir`: Log file directory
+- `--log-dir`: 로그 파일 저장 경로
+
+## Logging Levels
+로깅 레벨
+
+- INFO: Service status changes
+- INFO: 서비스 상태 변경사항
+
+- WARNING: Reconnection attempts and warnings
+- WARNING: 재연결 시도 및 경고상황
+
+- ERROR: Error situations
+- ERROR: 오류 상황
+
+- DEBUG: Detailed debugging information
+- DEBUG: 상세 디버깅 정보
+
+## Important Notes
+주의사항
+
+- Must configure .env file before running
+- 실행 전 반드시 .env 파일 설정 필요
+
+- Verify correct serial port configuration
+- 올바른 시리얼 포트 설정 확인
+
+- Check hardware connection status
+- 하드웨어 연결 상태 확인
+
+## Error Handling
+에러 처리
+
+- Service won't start if environment variables are missing
+- 환경 변수 미설정 시 서비스 시작 불가
+
+- Logs error on hardware connection failure
+- 하드웨어 연결 실패 시 에러 로그 기록
+
+- Automatic retry on realtime service connection failure
+- 실시간 서비스 연결 실패 시 자동 재시도
 
 ---
