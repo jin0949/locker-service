@@ -4,20 +4,19 @@ import time
 
 
 class LockerMonitorHandler:
-    def __init__(self, locker, supa_db, realtime_service):
+    def __init__(self, locker, supa_db):
         self.locker = locker
         self.supa_db = supa_db
-        self.realtime_service = realtime_service
         self.storage_states = {}
         self.last_full_sync = 0
         self.FULL_SYNC_INTERVAL = 60
-        logging.info("LockerMonitorHandler initialized")
+        logging.info("Locker monitoring system initialized")
 
     async def initialize_states(self):
         try:
             storages = self.supa_db.get_all_storages()
             if not storages:
-                logging.warning("No storages found during initialization")
+                logging.warning("Storage initialization failed: No storage units found")
                 return False
 
             for storage in storages:
@@ -27,22 +26,21 @@ class LockerMonitorHandler:
                     'is_locked': current_state
                 }
                 self.supa_db.update_storage_status(storage['id'], current_state)
-                logging.debug(
-                    f"Initialized storage {storage['id']}: locker {storage['number']} is {'locked' if current_state else 'unlocked'}")
+                logging.debug(f"Storage {storage['number']} initialized: {'Locked' if current_state else 'Unlocked'}")
 
             self.last_full_sync = time.time()
-            logging.info("Storage states initialized successfully")
+            logging.info("All storage units initialized successfully")
             return True
         except Exception as e:
-            logging.error(f"Storage states initialization failed: {str(e)}")
-            return False
+            logging.critical(f"System initialization failed: {str(e)}")
+            raise Exception(f"System initialization failed: {str(e)}")
 
     async def full_sync(self):
         try:
-            logging.info("Starting full sync")
+            logging.debug("Starting full system synchronization")
             storages = self.supa_db.get_all_storages()
             if not storages:
-                logging.warning("No storages found during full sync")
+                logging.warning("Full sync failed: No storage units found")
                 return
 
             current_ids = {storage['id'] for storage in storages}
@@ -50,7 +48,7 @@ class LockerMonitorHandler:
 
             for storage_id in removed_ids:
                 del self.storage_states[storage_id]
-                logging.info(f"Removed storage {storage_id} from monitoring")
+                logging.debug(f"Storage unit {storage_id} removed from monitoring")
 
             for storage in storages:
                 current_state = self.locker.is_locked(storage['number'])
@@ -62,20 +60,20 @@ class LockerMonitorHandler:
                         'is_locked': current_state
                     }
                     self.supa_db.update_storage_status(storage['id'], current_state)
-                    logging.info(
-                        f"Updated storage {storage['id']}: locker {storage['number']} is {'locked' if current_state else 'unlocked'}")
+                    logging.debug(
+                        f"Storage {storage['number']} state changed: {'Locked' if current_state else 'Unlocked'}")
 
             self.last_full_sync = time.time()
-            logging.info("Full sync completed")
+            logging.debug("Full synchronization completed")
         except Exception as e:
-            logging.error(f"Full sync failed: {str(e)}")
+            logging.error(f"Full sync operation failed: {str(e)}")
 
-    async def monitor_locker_states(self):
+    async def start(self):
         if not await self.initialize_states():
-            logging.error("Monitor initialization failed")
-            return
+            logging.critical("System monitor initialization failed - shutting down")
+            raise Exception("System monitor initialization failed - shutting down")
 
-        logging.info("Starting locker state monitoring")
+        logging.info("Locker monitoring system started")
         while True:
             try:
                 current_time = time.time()
@@ -88,10 +86,10 @@ class LockerMonitorHandler:
                     if current_state != storage_info['is_locked']:
                         self.storage_states[storage_id]['is_locked'] = current_state
                         self.supa_db.update_storage_status(storage_id, current_state)
-                        logging.info(
-                            f"State change detected - Storage {storage_id}: locker {storage_info['number']} is {'locked' if current_state else 'unlocked'}")
+                        logging.debug(
+                            f"Storage {storage_info['number']} state change detected: {'Locked' if current_state else 'Unlocked'}")
 
                 await asyncio.sleep(1)
             except Exception as e:
-                logging.error(f"Monitoring error: {str(e)}")
-                await asyncio.sleep(5)
+                logging.critical(f"Critical monitoring system error: {str(e)}")
+                raise Exception(f"Critical monitoring system error: {str(e)}")
