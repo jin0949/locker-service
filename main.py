@@ -1,5 +1,9 @@
 import asyncio
+import logging
 import os
+import argparse
+import sys
+
 from setproctitle import setproctitle
 from dotenv import load_dotenv
 
@@ -10,49 +14,57 @@ from src.supa_db.supa_db import SupaDB
 from src.supa_realtime.realtime_service import RealtimeService
 from src.utils.logger import setup_logger
 
-# User configurations
-SERIAL_PORT = '/dev/ttyUSB0'
 SERVICE_NAME = "locker-service"
 
-# Load environment variables
-load_dotenv()
-DATABASE_URL = os.getenv('DATABASE_URL')
-JWT = os.getenv('JWT')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Locker Service')
+    # parser.add_argument('--port', default='COM6', help='Serial port for locker connection')
+    parser.add_argument('--port', default='/dev/ttyUSB0', help='Serial port for locker connection')
+    parser.add_argument('--log-level',
+                        default='INFO',
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        help='Set the logging level')
+    parser.add_argument('--log-dir',
+                        default='logs',
+                        help='Directory for log files')
+    return parser.parse_args()
 
 
 async def main():
-    setproctitle(SERVICE_NAME)
-    logger = setup_logger()
-
     try:
-        # Initialize base components
-        locker = Locker(SERIAL_PORT)
-        supa_db = SupaDB(DATABASE_URL, JWT)
+        args = parse_arguments()
 
-        # Initialize realtime services
-        realtime_service = RealtimeService(DATABASE_URL, JWT)
+        setup_logger(args.log_dir, logging.getLevelName(args.log_level))
+        setproctitle(SERVICE_NAME)
+        load_dotenv()
 
-        # Initialize handlers with dependencies
-        open_requests_handler = LockerOpenRequestsHandler(
-            locker=locker,
-            supa_db=supa_db,
-            realtime_service=realtime_service
-        )
+        database_url = os.getenv('DATABASE_URL')
+        jwt = os.getenv('JWT')
 
-        monitor_handler = LockerMonitorHandler(
-            locker=locker,
-            supa_db=supa_db,
-            realtime_service=realtime_service
-        )
+        if not all([database_url, jwt]):
+            raise Exception("Required environment variables are missing")
 
-        await asyncio.gather(
-            open_requests_handler.start(),
-            monitor_handler.monitor_locker_states(),
-        )
+        logging.info(f"Starting {SERVICE_NAME} with port {args.port}")
+
+        locker = Locker(args.port)
+        supa_db = SupaDB(database_url, jwt)
+        realtime_service = RealtimeService(database_url, jwt)
+
+        handlers = [
+            LockerOpenRequestsHandler(locker, supa_db, realtime_service).start(),
+            LockerMonitorHandler(locker, supa_db).start(),
+        ]
+
+        await asyncio.gather(*handlers)
+
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        logging.info("Service shutting down gracefully...")
     except Exception as e:
-        logger.error(f"CRITICAL: Main process error: {str(e)}")
+        logging.critical(f"Service error: {str(e)}")
+        sys.exit(1)
     finally:
-        if locker:
+        if 'locker' in locals():
             locker.close()
 
 
