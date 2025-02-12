@@ -22,7 +22,6 @@ class Locker:
             )
             logging.info(f"Serial port {port} connected successfully")
         except serial.SerialException as e:
-            logging.critical(f"Failed to initialize serial port {port}: {str(e)}")
             raise LockerException(f"Port connection failed: {str(e)}")
 
     def close(self):

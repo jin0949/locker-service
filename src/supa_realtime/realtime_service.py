@@ -101,7 +101,6 @@ class RealtimeService:
                 await self._socket.listen()
 
             except Exception as e:
-                logging.critical(f"Fatal realtime connection error: {str(e)}")
                 raise RuntimeError(f"Realtime service critical failure: {str(e)}")
 
     async def stop_listening(self):

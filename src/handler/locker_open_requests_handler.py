@@ -91,6 +91,5 @@ class LockerOpenRequestsHandler:
         try:
             await self.realtime_service.start_listening()
         except Exception as e:
-            logging.critical(f"Failed to start LockerOpenRequestsHandler: {str(e)}")
             raise Exception(f"Failed to start LockerOpenRequestsHandler: {str(e)}")
 

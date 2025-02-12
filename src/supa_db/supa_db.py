@@ -8,7 +8,6 @@ class SupaDB:
             self.client: Client = create_client(database_url, jwt)
             logging.info("SupaDB initialized")
         except Exception as e:
-            logging.critical(f"Failed to initialize SupaDB: {str(e)}")
             raise Exception(f"Failed to initialize SupaDB: {str(e)}")
 
     def get_user_role(self, user_id: str):

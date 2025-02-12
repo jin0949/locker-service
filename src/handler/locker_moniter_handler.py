@@ -32,7 +32,6 @@ class LockerMonitorHandler:
             logging.info("All storage units initialized successfully")
             return True
         except Exception as e:
-            logging.critical(f"System initialization failed: {str(e)}")
             raise Exception(f"System initialization failed: {str(e)}")
 
     async def full_sync(self):
@@ -70,7 +69,6 @@ class LockerMonitorHandler:
 
     async def start(self):
         if not await self.initialize_states():
-            logging.critical("System monitor initialization failed - shutting down")
             raise Exception("System monitor initialization failed - shutting down")
 
         logging.info("Locker monitoring system started")
@@ -91,5 +89,4 @@ class LockerMonitorHandler:
 
                 await asyncio.sleep(1)
             except Exception as e:
-                logging.critical(f"Critical monitoring system error: {str(e)}")
                 raise Exception(f"Critical monitoring system error: {str(e)}")
