@@ -19,8 +19,10 @@ class LockerMonitorHandler:
                 logging.warning("Storage initialization failed: No storage units found")
                 return False
 
+            locker_states = self.locker.get_all_locker_states()
+
             for storage in storages:
-                current_state = self.locker.is_locked(storage['number'])
+                current_state = locker_states.get(storage['number'], True)
                 self.storage_states[storage['id']] = {
                     'number': storage['number'],
                     'is_locked': current_state
@@ -42,6 +44,7 @@ class LockerMonitorHandler:
                 logging.warning("Full sync failed: No storage units found")
                 return
 
+            locker_states = self.locker.get_all_locker_states()
             current_ids = {storage['id'] for storage in storages}
             removed_ids = set(self.storage_states.keys()) - current_ids
 
@@ -50,7 +53,7 @@ class LockerMonitorHandler:
                 logging.debug(f"Storage unit {storage_id} removed from monitoring")
 
             for storage in storages:
-                current_state = self.locker.is_locked(storage['number'])
+                current_state = locker_states.get(storage['number'], True)
                 stored_state = self.storage_states.get(storage['id'])
 
                 if not stored_state or stored_state['is_locked'] != current_state:
@@ -78,8 +81,9 @@ class LockerMonitorHandler:
                 if current_time - self.last_full_sync >= self.FULL_SYNC_INTERVAL:
                     await self.full_sync()
 
+                locker_states = self.locker.get_all_locker_states()
                 for storage_id, storage_info in self.storage_states.items():
-                    current_state = self.locker.is_locked(storage_info['number'])
+                    current_state = locker_states.get(storage_info['number'], True)
 
                     if current_state != storage_info['is_locked']:
                         self.storage_states[storage_id]['is_locked'] = current_state

@@ -1,9 +1,7 @@
+import logging
 import time
 import serial
-import logging
 from .constants import LockerCommand, PacketByte, ResponseIndex
-from .exceptions import LockerException
-
 
 class Locker:
     MAX_LOCKER = 16
@@ -22,18 +20,18 @@ class Locker:
             )
             logging.info(f"Serial port {port} connected successfully")
         except serial.SerialException as e:
-            raise LockerException(f"Port connection failed: {str(e)}")
+            raise Exception(f"Port connection failed: {str(e)}")
 
     def close(self):
         if hasattr(self, 'ser') and self.ser.is_open:
             self.ser.close()
             logging.debug("Serial connection closed properly")
 
-    def is_locked(self, locker_number: int) -> bool:
-        if not self.MIN_LOCKER <= locker_number <= self.MAX_LOCKER:
-            logging.error(f"Invalid locker number: {locker_number} (valid range: {self.MIN_LOCKER}-{self.MAX_LOCKER})")
-            return True
-
+    def get_all_locker_states(self) -> dict:
+        """
+        Get the status of all lockers at once
+        Returns a dictionary with locker numbers as keys and locked status as values
+        """
         try:
             cmd = bytearray([
                 PacketByte.STX.value,
@@ -43,30 +41,42 @@ class Locker:
                 0x35
             ])
             self.ser.write(cmd)
-            logging.debug(f"Checking status of locker {locker_number}")
+            logging.debug("Checking status of all lockers")
 
             response = self.ser.read(self.RESPONSE_LENGTH)
             if len(response) != self.RESPONSE_LENGTH:
                 logging.error(f"Invalid response length from hardware: {len(response)}")
-                return True
+                return {i: True for i in range(self.MIN_LOCKER, self.MAX_LOCKER + 1)}
 
             if response[ResponseIndex.STX.value] != PacketByte.STX.value:
                 logging.error("Hardware communication error: Invalid start byte")
-                return True
+                return {i: True for i in range(self.MIN_LOCKER, self.MAX_LOCKER + 1)}
 
-            status_idx = ResponseIndex.STATUS_1_8.value if locker_number <= 8 else ResponseIndex.STATUS_9_16.value
-            bit_position = (locker_number - 1) % 8
-            is_locked = bool((response[status_idx] >> bit_position) & 0x01)
+            states = {}
+            # Process lockers 1-8
+            for i in range(8):
+                states[i + 1] = bool((response[ResponseIndex.STATUS_1_8.value] >> i) & 0x01)
+            # Process lockers 9-16
+            for i in range(8):
+                states[i + 9] = bool((response[ResponseIndex.STATUS_9_16.value] >> i) & 0x01)
 
-            logging.debug(f"Locker {locker_number} current status: {'Locked' if is_locked else 'Unlocked'}")
-            return is_locked
+            logging.debug(f"All locker states retrieved: {states}")
+            return states
 
         except serial.SerialException as e:
             logging.error(f"Hardware communication failure: {str(e)}")
-            return True
+            return {i: True for i in range(self.MIN_LOCKER, self.MAX_LOCKER + 1)}
         except Exception as e:
             logging.error(f"Unexpected error while checking locker status: {str(e)}")
+            return {i: True for i in range(self.MIN_LOCKER, self.MAX_LOCKER + 1)}
+
+    def is_locked(self, locker_number: int) -> bool:
+        if not self.MIN_LOCKER <= locker_number <= self.MAX_LOCKER:
+            logging.error(f"Invalid locker number: {locker_number} (valid range: {self.MIN_LOCKER}-{self.MAX_LOCKER})")
             return True
+
+        states = self.get_all_locker_states()
+        return states.get(locker_number, True)
 
     def open(self, locker_number: int) -> bool:
         if not self.MIN_LOCKER <= locker_number <= self.MAX_LOCKER:
