@@ -12,6 +12,25 @@ class LockerMonitorHandler:
         self.FULL_SYNC_INTERVAL = 60
         logging.info("Locker monitoring system initialized")
 
+    async def sync_storage_states(self, storages, locker_states):
+        try:
+            for storage in storages:
+                current_state = locker_states.get(storage['number'], True)
+                stored_state = self.storage_states.get(storage['id'])
+
+                if not stored_state or stored_state['is_locked'] != current_state:
+                    self.storage_states[storage['id']] = {
+                        'number': storage['number'],
+                        'is_locked': current_state
+                    }
+                    self.supa_db.update_storage_status(storage['id'], current_state)
+                    logging.debug(
+                        f"Storage {storage['number']} state changed: {'Locked' if current_state else 'Unlocked'}")
+            return True
+        except Exception as e:
+            logging.error(f"Storage sync failed: {str(e)}")
+            return False
+
     async def initialize_states(self):
         try:
             storages = self.supa_db.get_all_storages()
@@ -20,19 +39,11 @@ class LockerMonitorHandler:
                 return False
 
             locker_states = self.locker.get_all_locker_states()
-
-            for storage in storages:
-                current_state = locker_states.get(storage['number'], True)
-                self.storage_states[storage['id']] = {
-                    'number': storage['number'],
-                    'is_locked': current_state
-                }
-                self.supa_db.update_storage_status(storage['id'], current_state)
-                logging.debug(f"Storage {storage['number']} initialized: {'Locked' if current_state else 'Unlocked'}")
-
-            self.last_full_sync = time.time()
-            logging.info("All storage units initialized successfully")
-            return True
+            if await self.sync_storage_states(storages, locker_states):
+                self.last_full_sync = time.time()
+                logging.info("All storage units initialized successfully")
+                return True
+            return False
         except Exception as e:
             raise Exception(f"System initialization failed: {str(e)}")
 
@@ -52,21 +63,10 @@ class LockerMonitorHandler:
                 del self.storage_states[storage_id]
                 logging.debug(f"Storage unit {storage_id} removed from monitoring")
 
-            for storage in storages:
-                current_state = locker_states.get(storage['number'], True)
-                stored_state = self.storage_states.get(storage['id'])
+            if await self.sync_storage_states(storages, locker_states):
+                self.last_full_sync = time.time()
+                logging.debug("Full synchronization completed")
 
-                if not stored_state or stored_state['is_locked'] != current_state:
-                    self.storage_states[storage['id']] = {
-                        'number': storage['number'],
-                        'is_locked': current_state
-                    }
-                    self.supa_db.update_storage_status(storage['id'], current_state)
-                    logging.debug(
-                        f"Storage {storage['number']} state changed: {'Locked' if current_state else 'Unlocked'}")
-
-            self.last_full_sync = time.time()
-            logging.debug("Full synchronization completed")
         except Exception as e:
             logging.error(f"Full sync operation failed: {str(e)}")
 
@@ -82,14 +82,10 @@ class LockerMonitorHandler:
                     await self.full_sync()
 
                 locker_states = self.locker.get_all_locker_states()
-                for storage_id, storage_info in self.storage_states.items():
-                    current_state = locker_states.get(storage_info['number'], True)
-
-                    if current_state != storage_info['is_locked']:
-                        self.storage_states[storage_id]['is_locked'] = current_state
-                        self.supa_db.update_storage_status(storage_id, current_state)
-                        logging.debug(
-                            f"Storage {storage_info['number']} state change detected: {'Locked' if current_state else 'Unlocked'}")
+                await self.sync_storage_states(
+                    [{'id': id, 'number': info['number']} for id, info in self.storage_states.items()],
+                    locker_states
+                )
 
                 await asyncio.sleep(1)
             except Exception as e:
