@@ -32,7 +32,13 @@ class KSTColoredFormatter(colorlog.ColoredFormatter):
             return dt.strftime(datefmt)
         return dt.strftime('%Y-%m-%d %H:%M:%S')
 
-class AsyncBufferedTimedRotatingFileHandler(TimedRotatingFileHandler):
+class KSTTimedRotatingFileHandler(TimedRotatingFileHandler):
+    def computeRollover(self, currentTime):
+        result = super().computeRollover(currentTime)
+        kst_diff = timedelta(hours=9).seconds
+        return result - kst_diff
+
+class AsyncBufferedKSTTimedRotatingFileHandler(KSTTimedRotatingFileHandler):
     def __init__(self, filename, when='h', interval=1, backup_count=0, encoding=None,
                  buffer_size=1000, flush_interval=300):
         super().__init__(filename, when, interval, backup_count, encoding=encoding)
@@ -81,7 +87,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    debug_handler = AsyncBufferedTimedRotatingFileHandler(
+    debug_handler = AsyncBufferedKSTTimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'debug.log'),
         when='midnight',
         interval=1,
@@ -96,7 +102,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
     debug_handler.addFilter(lambda record: record.levelno == logging.DEBUG)
     logging.getLogger().addHandler(debug_handler)
 
-    general_handler = AsyncBufferedTimedRotatingFileHandler(
+    general_handler = AsyncBufferedKSTTimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'service.log'),
         when='midnight',
         interval=1,
@@ -111,7 +117,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
     general_handler.addFilter(lambda record: logging.INFO <= record.levelno < logging.ERROR)
     logging.getLogger().addHandler(general_handler)
 
-    error_handler = TimedRotatingFileHandler(
+    error_handler = KSTTimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'error.log'),
         when='midnight',
         interval=1,
@@ -123,7 +129,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
     error_handler.addFilter(lambda record: record.levelno == logging.ERROR)
     logging.getLogger().addHandler(error_handler)
 
-    critical_handler = TimedRotatingFileHandler(
+    critical_handler = KSTTimedRotatingFileHandler(
         filename=os.path.join(log_dir, 'critical.log'),
         when='midnight',
         interval=1,
@@ -154,5 +160,5 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
     # Start periodic flush tasks for buffered handlers
     loop = asyncio.get_event_loop()
     for handler in logging.getLogger().handlers:
-        if isinstance(handler, AsyncBufferedTimedRotatingFileHandler):
+        if isinstance(handler, AsyncBufferedKSTTimedRotatingFileHandler):
             handler._flush_task = loop.create_task(handler.periodic_flush())
