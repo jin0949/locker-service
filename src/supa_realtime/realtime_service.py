@@ -1,6 +1,5 @@
 import asyncio
 import logging
-
 import websockets
 from realtime import AsyncRealtimeClient
 from typing import Callable
@@ -32,14 +31,38 @@ class RealtimeService:
         else:
             logging.warning("Callback received but no callback function is set")
 
+    async def _cleanup_channel(self):
+        """Clean up existing channel subscription"""
+        if self._channel:
+            try:
+                await self._channel.unsubscribe()
+                logging.debug("Existing channel unsubscribed")
+            except Exception as e:
+                logging.warning(f"Error unsubscribing channel: {str(e)}")
+            finally:
+                self._channel = None
+
+    async def _cleanup_socket(self):
+        """Clean up existing socket connection"""
+        if self._socket:
+            try:
+                await self._socket.close()
+                logging.debug("Existing socket closed")
+            except Exception as e:
+                logging.warning(f"Error closing socket: {str(e)}")
+            finally:
+                self._socket = None
+
     async def _setup_channel(self):
         try:
-            if self._channel:
-                await self._channel.unsubscribe()
+            # Cleanup existing channel
+            await self._cleanup_channel()
 
+            # Create and setup new channel
             self._channel = self._socket.channel("realtime:public:locker_open_requests")
             logging.info("Channel created")
 
+            # Setup subscription
             await self._channel.on_postgres_changes(
                 event="INSERT",
                 schema="public",
@@ -51,27 +74,27 @@ class RealtimeService:
             return True
         except Exception as e:
             logging.error(f"Channel setup failed: {str(e)}")
+            await self._cleanup_channel()
             return False
 
     async def _connect_socket(self):
         try:
-            if self._socket:
-                try:
-                    await self._socket.close()
-                except:
-                    pass
-                self._socket = None
+            # Cleanup existing socket
+            await self._cleanup_socket()
 
+            # Create and connect new socket
             with temporary_log_level(logging.WARNING):
                 self._socket = AsyncRealtimeClient(
                     f"{self.url}/realtime/v1",
                     self.jwt,
-                    auto_reconnect=False  # 수동으로 재연결 처리
+                    auto_reconnect=False
                 )
                 await self._socket.connect()
+            logging.debug("New socket connected")
             return True
         except Exception as e:
             logging.error(f"Socket connection failed: {str(e)}")
+            await self._cleanup_socket()
             return False
 
     async def establish_connection(self):
@@ -85,12 +108,14 @@ class RealtimeService:
 
             if not await self._setup_channel():
                 logging.warning("Failed to setup channel")
+                await self._cleanup_socket()
                 return False
 
             return True
 
         except Exception as e:
             logging.error(f"Connection establishment failed: {str(e)}")
+            await self._cleanup_socket()
             return False
 
     async def start_listening(self):
@@ -118,24 +143,22 @@ class RealtimeService:
                 await self._socket.listen()
 
             except websockets.exceptions.ConnectionClosedError:
-                logging.warning("Connection closed, will attempt to reconnect...")
-                continue
+                raise Exception("Connection closed by server")
             except Exception as e:
                 if self._is_running:
+                    if isinstance(e, websockets.exceptions.WebSocketException):
+                        raise Exception(f"WebSocket error: {str(e)}")
                     raise RuntimeError(f"Realtime service critical failure: {str(e)}")
 
     async def stop_listening(self):
         self._is_running = False
-        if self._socket:
-            try:
-                await self._socket.close()
-            except:
-                pass
-            self._socket = None
-        logging.info("Service stopped and connection closed")
+        await self._cleanup_channel()
+        await self._cleanup_socket()
+        logging.warning("Service stopped and connection closed")
 
     async def test_connection(self):
         logging.info("Testing connection...")
+        temp_socket = None
         try:
             with temporary_log_level(logging.WARNING):
                 temp_socket = AsyncRealtimeClient(
@@ -146,9 +169,14 @@ class RealtimeService:
                 await temp_socket.connect()
 
             logging.info("Test connection successful")
-            await temp_socket.close()
-            logging.debug("Test connection closed")
             return True
         except Exception as e:
             logging.error(f"Test connection failed: {str(e)}")
             return False
+        finally:
+            if temp_socket:
+                try:
+                    await temp_socket.close()
+                    logging.debug("Test connection closed")
+                except:
+                    pass
