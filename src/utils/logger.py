@@ -5,6 +5,32 @@ import asyncio
 from logging.handlers import TimedRotatingFileHandler
 from queue import Queue
 import atexit
+from datetime import datetime, timezone, timedelta
+
+# KST 시간대 설정
+KST = timezone(timedelta(hours=9))
+
+class KSTFormatter(logging.Formatter):
+    def converter(self, timestamp):
+        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        return dt.astimezone(KST)
+
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+class KSTColoredFormatter(colorlog.ColoredFormatter):
+    def converter(self, timestamp):
+        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        return dt.astimezone(KST)
+
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        if datefmt:
+            return dt.strftime(datefmt)
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 class AsyncBufferedTimedRotatingFileHandler(TimedRotatingFileHandler):
     def __init__(self, filename, when='h', interval=1, backup_count=0, encoding=None,
@@ -65,7 +91,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
         flush_interval=300
     )
     debug_handler.setLevel(logging.DEBUG)
-    debug_formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+    debug_formatter = KSTFormatter('[%(asctime)s] %(levelname)s: %(message)s')
     debug_handler.setFormatter(debug_formatter)
     debug_handler.addFilter(lambda record: record.levelno == logging.DEBUG)
     logging.getLogger().addHandler(debug_handler)
@@ -80,7 +106,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
         flush_interval=300
     )
     general_handler.setLevel(logging.INFO)
-    general_formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
+    general_formatter = KSTFormatter('[%(asctime)s] %(levelname)s: %(message)s')
     general_handler.setFormatter(general_formatter)
     general_handler.addFilter(lambda record: logging.INFO <= record.levelno < logging.ERROR)
     logging.getLogger().addHandler(general_handler)
@@ -92,7 +118,7 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
         encoding='utf-8'
     )
     error_handler.setLevel(logging.ERROR)
-    error_formatter = logging.Formatter('\n[%(asctime)s]\nERROR: %(message)s\n' + '-'*50)
+    error_formatter = KSTFormatter('\n[%(asctime)s]\nERROR: %(message)s\n' + '-'*50)
     error_handler.setFormatter(error_formatter)
     error_handler.addFilter(lambda record: record.levelno == logging.ERROR)
     logging.getLogger().addHandler(error_handler)
@@ -104,12 +130,12 @@ def setup_logger(log_dir='logs', log_level=logging.INFO):
         encoding='utf-8'
     )
     critical_handler.setLevel(logging.CRITICAL)
-    critical_formatter = logging.Formatter('\n[%(asctime)s]\nCRITICAL: %(message)s\n' + '-'*50)
+    critical_formatter = KSTFormatter('\n[%(asctime)s]\nCRITICAL: %(message)s\n' + '-'*50)
     critical_handler.setFormatter(critical_formatter)
     logging.getLogger().addHandler(critical_handler)
 
     console_handler = colorlog.StreamHandler()
-    console_formatter = colorlog.ColoredFormatter(
+    console_formatter = KSTColoredFormatter(
         fmt='%(log_color)s[%(asctime)s] %(levelname)s: %(message)s',
         log_colors={
             'DEBUG': 'cyan',
